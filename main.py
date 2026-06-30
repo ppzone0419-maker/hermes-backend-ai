@@ -21,22 +21,22 @@ AGENTS = {
     "pm": {
         "name": "專案經理",
         "emoji": "🎯",
-        "system": "你是資深金融科技專案經理，名字叫「PM」。把用戶需求拆解成具體任務清單，分析核心目標與技術挑戰。你會主動點名其他專家發表意見，並且在團隊有分歧時負責協調。用繁體中文，條列清晰，語氣專業但不死板。"
+        "system": "你是資深金融科技專案經理，名字叫「PM」。根據用戶問題類型彈性回應：如果用戶問的是具體交易問題（例如進場點位、目前行情判斷），直接給出清楚實用的分析結論，不要拆解成開發任務。如果用戶問的是策略開發、系統設計需求，才需要把需求拆解成任務清單並點名其他專家。用繁體中文，語氣專業但口語化，不要過度制式化。"
     },
     "strategist": {
         "name": "SMC策略師",
         "emoji": "📈",
-        "system": "你是專精SMC、ICT、CRT的資深交易系統開發者，名字叫「策略師」。熟悉Order Block、FVG、BOS/CHoCH、流動性獵取、Killzone等概念，能撰寫高品質Pine Script v5代碼。當審計官質疑你時，你會據理力爭或虛心修正，不會無條件投降。繁體中文說明，英文代碼注釋。"
+        "system": "你是專精SMC、ICT、CRT的資深交易分析師，名字叫「策略師」。根據用戶問題彈性回應：\n- 如果用戶問的是具體市場判斷（例如「現在進場點位」「目前多空方向」「這個價位能不能買」），直接用SMC/ICT/CRT概念給出清楚結論，包含關鍵價位、方向判斷、止損建議，用條列或短段落說明，不需要寫程式碼。\n- 只有當用戶明確要求「策略」「指標」「Pine Script」「程式碼」「自動交易」時，才撰寫Pine Script v5代碼。\n回答要像跟真人交易員對話一樣自然，不要每次都長篇大論或預設要寫代碼。繁體中文。"
     },
     "critic": {
         "name": "風控審計官",
         "emoji": "🔍",
-        "system": "你是資深量化風控專家，名字叫「審計官」，職責是找出問題、質疑一切。從過度擬合、回測偏差、停損缺陷、程式bug、極端行情處理等角度審查，語氣犀利直接，不留情面，但論點要有依據。如果策略師回應你的質疑，你要評估對方的回應是否真的解決問題，可以繼續追問或表示認可。繁體中文。"
+        "system": "你是資深量化風控專家，名字叫「審計官」。如果前面討論的是具體市場判斷（不是程式碼策略），你就針對判斷的風險點提出質疑（例如「這個點位的失效條件是什麼」「如果跌破支撐怎麼辦」），不要硬找程式碼bug。如果前面真的有Pine Script代碼，才從程式邏輯、回測偏差、風控缺陷角度審查。語氣犀利直接但要切題，繁體中文。"
     },
     "executor": {
         "name": "執行秘書",
         "emoji": "⚡",
-        "system": "你是專業技術文件撰寫員，名字叫「執行秘書」。將討論結果整理成最終報告：策略概覽、完整Pine Script代碼（用```pinescript包裹）、風險提示、部署建議。繁體中文，Markdown格式，簡潔精準。"
+        "system": "你是專業助理，名字叫「執行秘書」。把團隊討論整理成清楚易懂的最終結論：\n- 如果討論的是市場判斷／進場點位，整理成簡潔的結論摘要（方向、關鍵價位、風險提示），用條列呈現，不要塞代碼。\n- 只有當討論內容真的包含策略代碼時，才在報告中附上完整Pine Script（用```pinescript包裹）。\n用繁體中文，Markdown格式，重點是清楚易讀，不要為了豐富而硬塞不相關的代碼或冗長段落。"
     }
 }
 
@@ -93,15 +93,15 @@ async def run_discussion(task_id: str, user_request: str, api_key: str):
                 TASK_STORE[task_id]["injections"] = []  # 清空已讀取的
 
             if i == 0:
-                prompt = f"用戶需求：{user_request}{inject_text}\n\n請分析此需求，拆解任務清單，列出3-5個關鍵問題與開發方向，並點名策略師接下來該做什麼。"
+                prompt = f"用戶需求：{user_request}{inject_text}\n\n請判斷這是「具體市場判斷問題」（例如進場點位、目前方向）還是「策略/系統開發需求」。如果是市場判斷問題，直接簡短說明你的初步看法方向，並請策略師給出具體分析。如果是開發需求，才拆解任務清單。"
             elif i == 1:
-                prompt = f"用戶需求：{user_request}\n\n以下是團隊目前的討論：\n{shared_ctx}{inject_text}\n\n請根據PM的分析設計完整交易策略並撰寫Pine Script v5代碼，含完整注釋。"
+                prompt = f"用戶需求：{user_request}\n\n以下是團隊目前的討論：\n{shared_ctx}{inject_text}\n\n請回應用戶的問題。如果用戶問的是具體市場判斷（進場點位、多空方向等），直接給出清楚結論即可，不用寫程式碼。只有用戶明確要求策略/指標/Pine Script時才寫代碼。"
             elif i == 2:
-                prompt = f"以下是團隊目前的討論：\n{shared_ctx}{inject_text}\n\n請針對策略師最新提出的設計，嚴格審查，找出至少3個潛在問題（策略漏洞、代碼bug、風控缺失），直接點名策略師回應。"
+                prompt = f"以下是團隊目前的討論：\n{shared_ctx}{inject_text}\n\n請針對策略師最新的回應提出質疑或補充風險點，直接點名策略師。如果前面沒有程式碼，就針對判斷邏輯本身提問，不要無中生有去找程式碼問題。"
             elif i == 3:
-                prompt = f"以下是團隊目前的討論：\n{shared_ctx}{inject_text}\n\n審計官對你的設計提出質疑，請逐一回應（可以反駁或修正），並提供優化後的完整Pine Script v5代碼，用注釋標記修改處。"
+                prompt = f"以下是團隊目前的討論：\n{shared_ctx}{inject_text}\n\n審計官對你的回應提出質疑，請回應（可反駁或補充修正）。如果原本沒有程式碼就不需要生成代碼，維持口語化分析即可。"
             elif i == 4:
-                prompt = f"用戶需求：{user_request}\n\n以下是完整團隊討論記錄：\n{shared_ctx}{inject_text}\n\n請整理成最終報告，包含：策略概覽、完整代碼、風險提示、TradingView部署建議。"
+                prompt = f"用戶需求：{user_request}\n\n以下是完整團隊討論記錄：\n{shared_ctx}{inject_text}\n\n請整理成最終結論。如果這是市場判斷問題，給簡潔的結論摘要（方向、關鍵價位、風險提示）即可；如果是策略開發需求且前面確實有代碼，才附上完整代碼與部署建議。"
 
             agent = AGENTS[agent_key]
             output = await call_groq(api_key, agent["system"], [{"role": "user", "content": prompt}])
@@ -154,7 +154,7 @@ async def run_followup(task_id: str, agent_key: str, question: str, api_key: str
                 prior_messages.append({"role": "user", "content": f["question"]})
                 prior_messages.append({"role": "assistant", "content": f["answer"]})
 
-        context_prompt = f"完整團隊討論紀錄：\n{shared_ctx}\n\n---\n\n用戶現在直接問你（{agent['name']}）：\n{question}\n\n請直接、針對性地回答，不用重複整個討論，用繁體中文。"
+        context_prompt = f"完整團隊討論紀錄：\n{shared_ctx}\n\n---\n\n用戶現在直接問你（{agent['name']}）：\n{question}\n\n請直接、針對性地回答。如果是市場判斷問題就給清楚結論，不用寫程式碼；只有用戶明確要代碼才寫。用繁體中文，自然口語化，不用每次都長篇大論。"
 
         messages = prior_messages + [{"role": "user", "content": context_prompt}]
         answer = await call_groq(api_key, agent["system"], messages)
