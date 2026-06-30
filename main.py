@@ -50,7 +50,7 @@ async def call_groq(api_key: str, system: str, messages: List[dict]) -> str:
     payload = {
         "model": GROQ_MODEL,
         "messages": full_messages,
-        "max_tokens": 2000,
+        "max_tokens": 1200,
         "temperature": 0.75,
     }
     async with httpx.AsyncClient(timeout=120) as client:
@@ -117,6 +117,9 @@ async def run_discussion(task_id: str, user_request: str, api_key: str):
             }
             outputs.append(step_data)
             TASK_STORE[task_id]["outputs"] = list(outputs)
+
+            # 步驟間延遲，避免連續高 token 請求撞到 Groq 每分鐘速率限制
+            await asyncio.sleep(3)
 
         TASK_STORE[task_id]["status"] = "done"
         TASK_STORE[task_id]["completed_at"] = datetime.now().isoformat()
